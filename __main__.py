@@ -7,9 +7,22 @@ import pulumi_docker as docker
 size = "t2.micro"
 
 ami = aws.ec2.get_ami(
+    owners=["099720109477"],  # The AWS account ID for Canonical
     most_recent=True,
-    owners=["amazon"],
-    filters=[aws.ec2.GetAmiFilterArgs(name="name", values=["amzn2-ami-hvm-*"])],
+    filters=[
+        aws.ec2.GetAmiFilterArgs(
+            name="name",
+            values=["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"],
+        ),
+        aws.ec2.GetAmiFilterArgs(
+            name="architecture",
+            values=["x86_64"],
+        ),
+        aws.ec2.GetAmiFilterArgs(
+            name="root-device-type",
+            values=["ebs"],
+        ),
+    ],
 )
 
 security_group = aws.ec2.SecurityGroup(
@@ -39,13 +52,10 @@ security_group = aws.ec2.SecurityGroup(
     ],
 )
 
-user_data = """
-sudo yum update -y
-sudo amazon-linux-extras install docker -y
-sudo systemctl enable docker.service
-sudo systemctl start docker.service
-sudo newgrp docker
-sudo usermod -a -G docker ec2-user
+user_data = """#!/bin/bash
+sudo apt update
+sudo apt upgrade -y
+sudo apt install docker.io -y
 """
 
 # Create a new EC2 instance
@@ -82,3 +92,4 @@ ec2_instance = aws.ec2.Instance(
 
 pulumi.export("public_ip", ec2_instance.public_ip)
 pulumi.export("public_dns", ec2_instance.public_dns)
+pulumi.export("instance_id", ec2_instance.id)
